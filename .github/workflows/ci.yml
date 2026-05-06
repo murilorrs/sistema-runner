@@ -1,0 +1,219 @@
+name: CI & Release
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Testes Java
+  # ─────────────────────────────────────────────
+  test-java:
+    name: Testes Java (assinador-java)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projetos/assinador-java
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Rodar testes Maven
+        run: mvn -q test
+
+  # ─────────────────────────────────────────────
+  # 2. Build do assinador.jar
+  # ─────────────────────────────────────────────
+  build-java:
+    name: Build assinador.jar
+    runs-on: ubuntu-latest
+    needs: test-java
+    defaults:
+      run:
+        working-directory: projetos/assinador-java
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Build JAR
+        run: mvn -q package -DskipTests
+
+      - name: Upload assinador.jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: assinador-jar
+          path: projetos/assinador-java/target/assinador.jar
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # 3. Build e testes multiplataforma do CLI assinatura
+  # ─────────────────────────────────────────────
+  build-assinatura:
+    name: Build assinatura (${{ matrix.goos }})
+    runs-on: ubuntu-latest
+    needs: []
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: windows
+            goarch: amd64
+            ext: ".exe"
+          - goos: darwin
+            goarch: amd64
+            ext: ""
+
+    defaults:
+      run:
+        working-directory: projetos/assinatura
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: projetos/assinatura/go.sum
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Download Dependencies
+        run: go mod download
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: Extract Version
+        id: version
+        shell: bash
+        run: |
+          RAW_VERSION=$(grep -oP 'var version = "\K[^"]+' cmd/version.go)
+          VERSION="v$RAW_VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION"; then
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build -v -o assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} .
+
+      - name: Checksum e Assinatura (Cosign)
+        if: env.TAG_EXISTS == 'false'
+        shell: bash
+        run: |
+          FILE="assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          sha256sum "$FILE" > "$FILE.sha256"
+          cosign sign-blob --yes \
+            --output-certificate "$FILE.pem" \
+            --output-signature "$FILE.sig" \
+            "$FILE"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sha256
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.pem
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sig
+          retention-days: 7
+
+      - name: Publicar no GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: env.TAG_EXISTS == 'false'
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: Release ${{ env.VERSION }}
+          generate_release_notes: true
+          files: |
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sha256
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.pem
+            projetos/assinatura/assinatura-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}.sig
+
+  # ─────────────────────────────────────────────
+  # 4. Publicar assinador.jar na release
+  # ─────────────────────────────────────────────
+  release-jar:
+    name: Publicar assinador.jar na Release
+    runs-on: ubuntu-latest
+    needs: [build-java, build-assinatura]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Download assinador.jar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: assinador-jar
+          path: artifacts/
+
+      - name: Extract Version
+        shell: bash
+        run: |
+          RAW_VERSION=$(grep -oP 'var version = "\K[^"]+' projetos/assinatura/cmd/version.go)
+          VERSION="v$RAW_VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION"; then
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Checksum e Assinatura do JAR
+        if: env.TAG_EXISTS == 'false'
+        shell: bash
+        run: |
+          cd artifacts
+          sha256sum assinador.jar > assinador.jar.sha256
+          cosign sign-blob --yes \
+            --output-certificate assinador.jar.pem \
+            --output-signature assinador.jar.sig \
+            assinador.jar
+
+      - name: Publicar JAR na Release
+        uses: softprops/action-gh-release@v2
+        if: env.TAG_EXISTS == 'false'
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: |
+            artifacts/assinador.jar
+            artifacts/assinador.jar.sha256
+            artifacts/assinador.jar.pem
+            artifacts/assinador.jar.sig

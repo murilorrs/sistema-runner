@@ -1,0 +1,6 @@
+# Maven
+projetos/assinador-java/target/
+
+# Go build artifacts
+projetos/assinatura/assinatura-*
+projetos/simulador/simulador-*
