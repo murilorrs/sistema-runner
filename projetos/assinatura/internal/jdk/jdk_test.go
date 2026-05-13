@@ -2,6 +2,7 @@ package jdk
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -43,12 +44,11 @@ func TestJdkDownloadURL_ConsistenciaURLExtensao(t *testing.T) {
 }
 
 func TestJdkPath_DentroDeHubSaude(t *testing.T) {
-	home, _ := os.UserHomeDir()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	path := jdkPath()
-	if path == "" {
-		t.Error("jdkPath() não deve retornar string vazia")
-	}
-	if len(path) <= len(home) {
-		t.Errorf("jdkPath() deve ser subdiretório de home: %s", path)
+	want := filepath.Join(home, ".hubsaude", "jdk")
+	if path != want {
+		t.Errorf("jdkPath() = %q, want %q", path, want)
 	}
 }
