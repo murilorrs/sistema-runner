@@ -136,4 +136,54 @@ class FakeSignatureServiceTest {
         assertFalse(resp.isValid());
         assertTrue(resp.getMessage().contains("Base64"));
     }
+
+    // ===== isBase64 (package-private) =====
+
+    @Test
+    void isBase64_stringValidaSimples() {
+        assertTrue(FakeSignatureService.isBase64("dGVzdGU="));
+    }
+
+    @Test
+    void isBase64_base64ValidoSemPadding() {
+        assertTrue(FakeSignatureService.isBase64("dGVzdGU"));
+    }
+
+    @Test
+    void isBase64_base64UrlSafe() {
+        assertTrue(FakeSignatureService.isBase64("dGVzdGU-_"));
+    }
+
+    @Test
+    void isBase64_comEspacos() {
+        assertTrue(FakeSignatureService.isBase64("dGVz dGU="));
+        assertTrue(FakeSignatureService.isBase64("dGVz\ndGU="));
+    }
+
+    @Test
+    void isBase64_base64MuitoLongo() {
+        String base64 = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWjAxMjM0NTY3ODk=";
+        assertTrue(FakeSignatureService.isBase64(base64));
+    }
+
+    @Test
+    void isBase64_invalido_caractereInvalido() {
+        assertFalse(FakeSignatureService.isBase64("não_é_base64!@#$"));
+    }
+
+    @Test
+    void isBase64_invalido_espacosInvalidos() {
+        assertFalse(FakeSignatureService.isBase64("dGVzdGU=="));
+    }
+
+    @Test
+    void isBase64_stringVazia() {
+        // Tecnicamente vazio é base64 válido (decodifica para vazio)
+        assertTrue(FakeSignatureService.isBase64(""));
+    }
+
+    @Test
+    void isBase64_invalidoComCaracteresEspeciais() {
+        assertFalse(FakeSignatureService.isBase64("dGVzdGU=@#$"));
+    }
 }

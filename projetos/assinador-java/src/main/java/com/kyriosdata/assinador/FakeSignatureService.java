@@ -76,12 +76,13 @@ public class FakeSignatureService implements SignatureService {
      * Aceita padding com '=' ou sem padding (Base64 compacto).
      */
     static boolean isBase64(String value) {
+        String normalized = value.replaceAll("\\s", "");
         try {
-            Base64.getDecoder().decode(value.replaceAll("\\s", ""));
+            Base64.getDecoder().decode(normalized);
             return true;
         } catch (IllegalArgumentException e) {
             try {
-                Base64.getUrlDecoder().decode(value.replaceAll("\\s", ""));
+                Base64.getUrlDecoder().decode(normalized);
                 return true;
             } catch (IllegalArgumentException e2) {
                 return false;

@@ -49,4 +49,69 @@ class JsonUtilTest {
         assertEquals("dGVzdGU=", req.getContent());
         assertEquals("MOCKED_SIGNATURE_BASE64_==", req.getSignature());
     }
+
+    // ===== extractString (package-private) =====
+
+    @Test
+    void extractString_stringValida() {
+        String json = "{\"key\":\"value\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertEquals("value", result);
+    }
+
+    @Test
+    void extractString_stringComEspacos() {
+        String json = "{\"key\" : \"valor com espaços\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertEquals("valor com espaços", result);
+    }
+
+    @Test
+    void extractString_stringComAspasEscapadas() {
+        String json = "{\"key\":\"valor \\\"com\\\" aspas\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertEquals("valor \"com\" aspas", result);
+    }
+
+    @Test
+    void extractString_stringComBarrasEscapadas() {
+        String json = "{\"key\":\"caminho\\\\arquivo\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertEquals("caminho\\arquivo", result);
+    }
+
+    @Test
+    void extractString_stringComCaracteresEspeciais() {
+        String json = "{\"key\":\"valor\\ncom\\nnewlines\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertEquals("valor\ncom\nnewlines", result);
+    }
+
+    @Test
+    void extractString_valuoNull() {
+        String json = "{\"key\":null}";
+        String result = JsonUtil.extractString(json, "key");
+        assertNull(result);
+    }
+
+    @Test
+    void extractString_chaveNaoEncontrada() {
+        String json = "{\"outra\":\"value\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertNull(result);
+    }
+
+    @Test
+    void extractString_jsonVazio() {
+        String json = "{}";
+        String result = JsonUtil.extractString(json, "key");
+        assertNull(result);
+    }
+
+    @Test
+    void extractString_stringVazia() {
+        String json = "{\"key\":\"\"}";
+        String result = JsonUtil.extractString(json, "key");
+        assertEquals("", result);
+    }
 }

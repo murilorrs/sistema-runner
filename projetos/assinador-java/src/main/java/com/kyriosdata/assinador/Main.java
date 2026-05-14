@@ -30,9 +30,9 @@ public class Main {
         }
 
         // Modo servidor
-        if (hasFlag(args, "--server")) {
-            int port = intArg(args, "--port", 8080);
-            int timeout = intArg(args, "--timeout", 0);
+        if (ArgsParser.hasFlag(args, "--server")) {
+            int port = ArgsParser.intArg(args, "--port", 8080);
+            int timeout = ArgsParser.intArg(args, "--timeout", 0);
             new AssinadorServer(port, timeout).start();
             // bloqueia até o servidor ser encerrado
             Thread.currentThread().join();
@@ -44,8 +44,8 @@ public class Main {
 
         switch (command) {
             case "sign" -> {
-                String content = stringArg(args, "--content");
-                String token = stringArg(args, "--token");
+                String content = ArgsParser.stringArg(args, "--content");
+                String token = ArgsParser.stringArg(args, "--token");
 
                 if (content == null) {
                     System.err.println("{\"valid\":false,\"message\":\"Parâmetro --content é obrigatório\"}");
@@ -58,8 +58,8 @@ public class Main {
                 System.exit(resp.isValid() ? 0 : 1);
             }
             case "validate" -> {
-                String content = stringArg(args, "--content");
-                String signature = stringArg(args, "--signature");
+                String content = ArgsParser.stringArg(args, "--content");
+                String signature = ArgsParser.stringArg(args, "--signature");
 
                 if (content == null) {
                     System.err.println("{\"valid\":false,\"message\":\"Parâmetro --content é obrigatório\"}");
@@ -83,31 +83,6 @@ public class Main {
         }
     }
 
-    // --- utilitários de parsing de args ---
-
-    private static String stringArg(String[] args, String flag) {
-        for (int i = 0; i < args.length - 1; i++) {
-            if (args[i].equals(flag)) return args[i + 1];
-        }
-        return null;
-    }
-
-    private static int intArg(String[] args, String flag, int defaultValue) {
-        String val = stringArg(args, flag);
-        if (val == null) return defaultValue;
-        try {
-            return Integer.parseInt(val);
-        } catch (NumberFormatException e) {
-            System.err.println("Valor inválido para " + flag + ": " + val);
-            System.exit(1);
-            return defaultValue;
-        }
-    }
-
-    private static boolean hasFlag(String[] args, String flag) {
-        for (String a : args) if (a.equals(flag)) return true;
-        return false;
-    }
 
     private static String ajuda() {
         return """
