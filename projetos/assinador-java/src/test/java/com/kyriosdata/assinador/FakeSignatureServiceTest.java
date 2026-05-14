@@ -5,6 +5,9 @@ import com.kyriosdata.assinador.domain.SignatureResponse;
 import com.kyriosdata.assinador.domain.ValidateRequest;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class FakeSignatureServiceTest {
@@ -151,7 +154,9 @@ class FakeSignatureServiceTest {
 
     @Test
     void isBase64_base64UrlSafe() {
-        assertTrue(FakeSignatureService.isBase64("dGVzdGU-_"));
+        String urlSafe = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("payload-jwt-like".getBytes(StandardCharsets.UTF_8));
+        assertTrue(FakeSignatureService.isBase64(urlSafe));
     }
 
     @Test
