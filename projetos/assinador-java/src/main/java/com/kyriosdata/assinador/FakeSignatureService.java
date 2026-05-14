@@ -73,16 +73,51 @@ public class FakeSignatureService implements SignatureService {
 
     /**
      * Verifica se a string é um Base64 válido (incluindo Base64 URL-safe).
-     * Aceita padding com '=' ou sem padding (Base64 compacto).
+     * Aceita padding com '=' ou sem padding (RFC 4648), espaços em branco Unicode
+     * entre blocos e alfabeto URL-safe ({@code -} / {@code _}).
      */
     static boolean isBase64(String value) {
-        String normalized = value.replaceAll("\\s", "");
+        if (value == null) {
+            return false;
+        }
+        String normalized = stripWhitespace(value);
+        if (normalized.isEmpty()) {
+            return true;
+        }
+        if (decodeStandardOrUrl(normalized)) {
+            return true;
+        }
+        // Sem '=' no fim: tentar padding explícito conforme comprimento % 4
+        if (!normalized.endsWith("=")) {
+            int mod = normalized.length() % 4;
+            if (mod == 2 && decodeStandardOrUrl(normalized + "==")) {
+                return true;
+            }
+            if (mod == 3 && decodeStandardOrUrl(normalized + "=")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String stripWhitespace(String value) {
+        StringBuilder sb = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (!Character.isWhitespace(c)) {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static boolean decodeStandardOrUrl(String s) {
         try {
-            Base64.getDecoder().decode(normalized);
+            Base64.getDecoder().decode(s);
             return true;
         } catch (IllegalArgumentException e) {
             try {
-                Base64.getUrlDecoder().decode(normalized);
+                Base64.getUrlDecoder().decode(s);
                 return true;
             } catch (IllegalArgumentException e2) {
                 return false;
