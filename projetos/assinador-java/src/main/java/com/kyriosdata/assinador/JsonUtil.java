@@ -14,8 +14,8 @@ public class JsonUtil {
 
     /** Serializa um SignatureResponse para JSON. */
     public static String toJson(SignatureResponse r) {
-        String sig = r.getSignature() == null ? "null" : "\"" + escape(r.getSignature()) + "\"";
-        String msg = r.getMessage() == null ? "null" : "\"" + escape(r.getMessage()) + "\"";
+        String sig = stringToJson(r.getSignature());
+        String msg = stringToJson(r.getMessage());
         return String.format("{\"signature\":%s,\"valid\":%b,\"message\":%s}", sig, r.isValid(), msg);
     }
 
@@ -86,5 +86,9 @@ public class JsonUtil {
     private static String escape(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"")
                 .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+    }
+
+    private static String stringToJson(String value) {
+        return value == null ? "null" : "\"" + escape(value) + "\"";
     }
 }
