@@ -23,6 +23,9 @@ import com.kyriosdata.assinador.domain.ValidateRequest;
  */
 public class Main {
 
+    private static final String ERROR_CONTENT_REQUIRED = "{\"valid\":false,\"message\":\"Parâmetro --content é obrigatório\"}";
+    private static final String ERROR_SIGNATURE_REQUIRED = "{\"valid\":false,\"message\":\"Parâmetro --signature é obrigatório\"}";
+
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             System.err.println(ajuda());
@@ -48,7 +51,7 @@ public class Main {
                 String token = ArgsParser.stringArg(args, "--token");
 
                 if (content == null) {
-                    System.err.println("{\"valid\":false,\"message\":\"Parâmetro --content é obrigatório\"}");
+                    System.err.println(ERROR_CONTENT_REQUIRED);
                     System.exit(1);
                 }
 
@@ -62,11 +65,11 @@ public class Main {
                 String signature = ArgsParser.stringArg(args, "--signature");
 
                 if (content == null) {
-                    System.err.println("{\"valid\":false,\"message\":\"Parâmetro --content é obrigatório\"}");
+                    System.err.println(ERROR_CONTENT_REQUIRED);
                     System.exit(1);
                 }
                 if (signature == null) {
-                    System.err.println("{\"valid\":false,\"message\":\"Parâmetro --signature é obrigatório\"}");
+                    System.err.println(ERROR_SIGNATURE_REQUIRED);
                     System.exit(1);
                 }
 
