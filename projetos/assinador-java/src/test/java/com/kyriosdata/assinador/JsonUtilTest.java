@@ -114,4 +114,36 @@ class JsonUtilTest {
         String result = JsonUtil.extractString(json, "key");
         assertEquals("", result);
     }
+
+    @Test
+    void toJson_mensagemNula() {
+        SignatureResponse r = new SignatureResponse("SIG", true, null);
+        assertTrue(JsonUtil.toJson(r).contains("\"message\":null"));
+    }
+
+    @Test
+    void toJson_escapaAspasNaMensagem() {
+        SignatureResponse r = new SignatureResponse("SIG", false, "Erro \"detalhe\"");
+        String json = JsonUtil.toJson(r);
+
+        assertTrue(json.contains("\\\"detalhe\\\""));
+    }
+
+    @Test
+    void toValidateRequest_signatureAusente() {
+        String json = "{\"content\":\"dGVzdGU=\"}";
+        ValidateRequest req = JsonUtil.toValidateRequest(json);
+
+        assertEquals("dGVzdGU=", req.getContent());
+        assertNull(req.getSignature());
+    }
+
+    @Test
+    void toSignRequest_e_toValidateRequest_preservamConteudo() {
+        String signJson = "{\"content\":\"dGVzdGU=\",\"token\":\"/caminho\"}";
+        String validateJson = "{\"content\":\"dGVzdGU=\",\"signature\":\"SIG==\"}";
+
+        assertEquals("dGVzdGU=", JsonUtil.toSignRequest(signJson).getContent());
+        assertEquals("dGVzdGU=", JsonUtil.toValidateRequest(validateJson).getContent());
+    }
 }
